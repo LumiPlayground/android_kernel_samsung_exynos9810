@@ -48,9 +48,6 @@
 extern struct pdic_notifier_struct pd_noti;
 extern void (*fp_select_pdo)(int num);
 
-unsigned int pn_flag;
-EXPORT_SYMBOL(pn_flag);
-
 static void max77705_process_pd(struct max77705_usbc_platform_data *usbc_data)
 {
 	int i;
@@ -80,8 +77,6 @@ void max77705_select_pdo(int num)
 	temp = num;
 
 	pd_noti.sink_status.selected_pdo_num = num;
-	if (num != 1)
-		pn_flag = 1;
 
 	if (pd_noti.event != PDIC_NOTIFY_EVENT_PD_SINK)
 		pd_noti.event = PDIC_NOTIFY_EVENT_PD_SINK;
@@ -704,7 +699,6 @@ static irqreturn_t max77705_psrdy_irq(int irq, void *data)
 	if (usbc_data->pd_data->cc_status == CC_SNK) {
 		max77705_check_pdo(usbc_data);
 		usbc_data->pd_data->psrdy_received = true;
-		pn_flag = 0;
 	}
 	msg_maxim("OUT");
 	return IRQ_HANDLED;

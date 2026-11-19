@@ -1,5 +1,5 @@
 /*
- * include/linux/ccic/ccic_alternate.h
+ * include/linux/ccic/s2mm005_alternate.h
  *	- S2MM005 USB CCIC Alternate mode header file
  *
  * Copyright (C) 2016 Samsung Electronics
@@ -20,8 +20,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
-#ifndef __LINUX_CCIC_ALTERNATE_MODE_H__
-#define __LINUX_CCIC_ALTERNATE_MODE_H__
+#ifndef __LINUX_S2MM005_ALTERNATE_MODE_H__
+#define __LINUX_S2MM005_ALTERNATE_MODE_H__
 
 typedef union {
 	uint32_t        DATA;
@@ -226,7 +226,6 @@ typedef enum
     num_DFP_D_and_UFP_D_Capable = 3
 }Num_DP_Port_Capability_Type;
 
-#endif
 /* For DP VDM Modes VDO Receptacle_Indication */
 typedef enum
 {
@@ -395,6 +394,7 @@ enum VDM_MSG_IRQ_State {
 #define GEARVR_PRODUCT_ID_5		0xA505
 #define DEXDOCK_PRODUCT_ID		0xA020
 #define HDMI_PRODUCT_ID			0xA025
+#define DEXPAD_PRODUCT_ID		0xA029
 #define MPA_PRODUCT_ID			0x2122
 /* Samsung UVDM structure */
 #define SEC_UVDM_SHORT_DATA		0x0
@@ -414,17 +414,20 @@ enum VDM_MSG_IRQ_State {
 #define DP_PIN_ASSIGNMENT_E	0x00000010	/* ( 1 << 4 ) */
 #define DP_PIN_ASSIGNMENT_F	0x00000020	/* ( 1 << 5 ) */
 
-void send_alternate_message(void *data, int cmd);
-void receive_alternate_message(void *data, VDM_MSG_IRQ_STATUS_Type
+void s2mm005_send_alternate_message(void *data, int cmd);
+void s2mm005_receive_alternate_message(void *data, VDM_MSG_IRQ_STATUS_Type
 			       *VDM_MSG_IRQ_State);
-int ccic_register_switch_device(int mode);
-void acc_detach_check(struct work_struct *work);
-void send_unstructured_vdm_message(void * data, int cmd);
-void send_dna_audio_unstructured_vdm_message(void * data, int cmd);
-void receive_unstructured_vdm_message(void * data, SSM_MSG_IRQ_STATUS_Type *SSM_MSG_IRQ_State);
+void s2mm005_acc_detach_check(struct work_struct *work);
+void s2mm005_send_unstructured_vdm_message(void * data, int cmd);
+void s2mm005_send_dna_audio_unstructured_vdm_message(void * data, int cmd);
+void s2mm005_receive_unstructured_vdm_message(void * data, SSM_MSG_IRQ_STATUS_Type *SSM_MSG_IRQ_State);
+void send_role_swap_message(void * data, int cmd);
+void send_attention_message(void * data, int cmd);
 void do_alternate_mode_step_by_step(void * data, int cmd);
-void send_dex_fan_unstructured_vdm_message(void * data, int cmd);
-int send_samsung_unstructured_vdm_message(void * data, const char *buf, size_t size);
-void set_enable_alternate_mode(int mode);
-void set_clear_discover_mode(void);
-void set_host_turn_on_event(int mode);
+void s2mm005_send_dex_fan_unstructured_vdm_message(void * data, int cmd);
+int s2mm005_send_samsung_unstructured_vdm_message(void * data, const char *buf, size_t size);
+void s2mm005_set_enable_alternate_mode(int mode);
+void s2mm005_set_clear_discover_mode(void);
+void s2mm005_set_host_turn_on_event(int mode);
+
+#endif /* __LINUX_S2MM005_ALTERNATE_MODE_H__ */

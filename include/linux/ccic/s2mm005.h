@@ -824,7 +824,7 @@ struct s2mm005_data {
 
 	int plug_rprd_sel;
 	uint32_t data_role;
-#if defined(CONFIG_CCIC_ALTERNATE_MODE)
+
 	uint32_t alternate_state;
 	uint32_t acc_type;
 	uint32_t Vendor_ID;
@@ -842,7 +842,7 @@ struct s2mm005_data {
 	int host_turn_on_event;
 	int host_turn_on_wait_time;
 	int is_samsung_accessory_enter_mode;
-#endif
+
 	int manual_lpm_mode;
 #if defined(CONFIG_DUAL_ROLE_USB_INTF)
 	struct dual_role_phy_instance *dual_role;

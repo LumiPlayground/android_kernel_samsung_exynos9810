@@ -67,22 +67,7 @@ extern int dual_role_set_prop(struct dual_role_phy_instance *dual_role,
 extern int dual_role_is_writeable(struct dual_role_phy_instance *drp,
 				  enum dual_role_property prop);
 #endif
-extern void dp_detach(void *data);
-////////////////////////////////////////////////////////////////////////////////
-// external functions in ccic_alternate.c
-////////////////////////////////////////////////////////////////////////////////
-extern void send_alternate_message(void * data, int cmd);
-extern void receive_alternate_message(void * data, VDM_MSG_IRQ_STATUS_Type *VDM_MSG_IRQ_State);
-extern int ccic_register_switch_device(int mode);
-extern void acc_detach_check(struct work_struct *work);
-extern void send_unstructured_vdm_message(void * data, int cmd);
-extern void receive_unstructured_vdm_message(void * data, SSM_MSG_IRQ_STATUS_Type *SSM_MSG_IRQ_State);
-extern void send_role_swap_message(void * data, int cmd);
-extern void send_attention_message(void * data, int cmd);
-extern void do_alternate_mode_step_by_step(void * data, int cmd);
-extern void set_enable_alternate_mode(int mode);
-extern void set_clear_discover_mode(void);
-extern void set_host_turn_on_event(int mode);
+extern void s2mm005_dp_detach(void *data);
 ////////////////////////////////////////////////////////////////////////////////
 // external functions in s2mm005_pd.c
 ////////////////////////////////////////////////////////////////////////////////

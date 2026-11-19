@@ -21,11 +21,9 @@
 
 #include <linux/ccic/s2mm005.h>
 #include <linux/ccic/s2mm005_ext.h>
+#include <linux/ccic/s2mm005_alternate.h>
 #if defined(CONFIG_CCIC_NOTIFIER)
 #include <linux/workqueue.h>
-#endif
-#if defined(CONFIG_CCIC_ALTERNATE_MODE)
-#include <linux/ccic/ccic_alternate.h>
 #endif
 #if defined(CONFIG_USB_HOST_NOTIFY)
 #include <linux/usb_notify.h>
@@ -384,8 +382,8 @@ void process_cc_water_det(void * data)
 			s2mm005_manual_LPM(usbpd_data, 0x9);
 	}
 }
-#if defined(CONFIG_CCIC_ALTERNATE_MODE)
-void dp_detach(void *data)
+
+void s2mm005_dp_detach(void *data)
 {
 	struct s2mm005_data *usbpd_data = data;
 
@@ -401,7 +399,6 @@ void dp_detach(void *data)
 	usbpd_data->is_sent_pin_configuration = 0;
 	return;
 }
-#endif
 
 //////////////////////////////////////////// ////////////////////////////////////
 // Moisture detection processing
@@ -523,9 +520,7 @@ void process_cc_attach(void * data,u8 *plug_attach_done)
 				/* AUTO LPM Enable */
 				s2mm005_manual_LPM(usbpd_data, 6);
 			}
-#if defined(CONFIG_CCIC_ALTERNATE_MODE)
-			set_enable_alternate_mode(ALTERNATE_MODE_START);
-#endif
+			s2mm005_set_enable_alternate_mode(ALTERNATE_MODE_START);
 		}
 		
 		if(usbpd_data->pd_state == State_PE_SRC_Wait_New_Capabilities && Lp_DATA.BITS.Sleep_Cable_Detect)
@@ -599,14 +594,13 @@ void process_cc_attach(void * data,u8 *plug_attach_done)
 				else
 #endif
 					vbus_turn_on_ctrl(1);
-#if defined(CONFIG_CCIC_ALTERNATE_MODE)
 				// only start alternate mode at DFP state
-//				send_alternate_message(usbpd_data, VDM_DISCOVER_ID);
+//				s2mm005_send_alternate_message(usbpd_data, VDM_DISCOVER_ID);
 				if (usbpd_data->acc_type != CCIC_DOCK_DETACHED) {
-					pr_info("%s: cancel_delayed_work_sync - pd_state : %d\n", __func__, usbpd_data->pd_state);
+					pr_info("%s: schedule_delayed_work - pd_state : %d\n",
+							__func__, usbpd_data->pd_state);
 					cancel_delayed_work_sync(&usbpd_data->acc_detach_work);
 				}
-#endif
 			}
 			break;
 		case State_PE_SNK_Wait_for_Capabilities:
@@ -619,11 +613,8 @@ void process_cc_attach(void * data,u8 *plug_attach_done)
 			if (usbpd_data->is_host == HOST_ON) {
 				dev_info(&i2c->dev, "%s %d: pd_state:%02d,  turn off host\n",
 						__func__, __LINE__, usbpd_data->pd_state);
-#if defined(CONFIG_CCIC_ALTERNATE_MODE)
-				if (usbpd_data->dp_is_connect == 1) {
-					dp_detach(usbpd_data);
-				}
-#endif
+				if (usbpd_data->dp_is_connect == 1)
+					s2mm005_dp_detach(usbpd_data);
 				ccic_event_work(usbpd_data,
 						CCIC_NOTIFY_DEV_MUIC, CCIC_NOTIFY_ID_ATTACH, 0/*attach*/, 1/*rprd*/, 0);
 #if defined(CONFIG_DUAL_ROLE_USB_INTF)
@@ -675,19 +666,18 @@ void process_cc_attach(void * data,u8 *plug_attach_done)
 		usbpd_data->plug_rprd_sel = 0;
 		usbpd_data->is_dr_swap = 0;
 		usbpd_data->is_pr_swap = 0;
-#if defined(CONFIG_CCIC_ALTERNATE_MODE)
-		if (usbpd_data->dp_is_connect == 1) {
-			dp_detach(usbpd_data);
+		if (usbpd_data->dp_is_connect == 1)
+			s2mm005_dp_detach(usbpd_data);
+		if (usbpd_data->acc_type != CCIC_DOCK_DETACHED) {
+			pr_info("%s: schedule_delayed_work - pd_state : %d\n",
+					__func__, usbpd_data->pd_state);
+			if (usbpd_data->acc_type == CCIC_DOCK_HMT)
+				schedule_delayed_work(&usbpd_data->acc_detach_work,
+					msecs_to_jiffies(GEAR_VR_DETACH_WAIT_MS));
+			else
+				schedule_delayed_work(&usbpd_data->acc_detach_work,
+					msecs_to_jiffies(0));
 		}
-		if ( usbpd_data->acc_type != CCIC_DOCK_DETACHED ) {
-			pr_info("%s: schedule_delayed_work - pd_state : %d\n", __func__, usbpd_data->pd_state);
-			if (usbpd_data->acc_type == CCIC_DOCK_HMT ) {
-				schedule_delayed_work(&usbpd_data->acc_detach_work, msecs_to_jiffies(GEAR_VR_DETACH_WAIT_MS));
-			} else {
-				schedule_delayed_work(&usbpd_data->acc_detach_work, msecs_to_jiffies(0));
-			}
-		}
-#endif
 #if defined(CONFIG_CCIC_NOTIFIER)
 		/* muic */
 		ccic_event_work(usbpd_data,
@@ -823,14 +813,9 @@ void process_cc_get_int_status(void *data, uint32_t *pPRT_MSG, MSG_IRQ_STATUS_Ty
 	{
 		usbpd_data->is_dr_swap++;
 		dev_info(&i2c->dev, "is_dr_swap count : 0x%x\n", usbpd_data->is_dr_swap);
-#if defined(CONFIG_CCIC_ALTERNATE_MODE)
-		if (usbpd_data->dp_is_connect)
-		{
+		if (usbpd_data->dp_is_connect) {
 			dev_info(&i2c->dev, "dr_swap is skiped, current status is dp mode !!\n");
-		}
-		else
-		{
-#endif
+		} else {
 			if (usbpd_data->is_host == HOST_ON) {
 				ccic_event_work(usbpd_data,
 						CCIC_NOTIFY_DEV_USB, CCIC_NOTIFY_ID_USB,
@@ -858,19 +843,15 @@ void process_cc_get_int_status(void *data, uint32_t *pPRT_MSG, MSG_IRQ_STATUS_Ty
 				usbpd_data->is_host = HOST_ON;
 				usbpd_data->is_client = CLIENT_OFF;
 			}
-#if defined(CONFIG_CCIC_ALTERNATE_MODE)
 		}
-#endif
 	}
 
-#if defined(CONFIG_CCIC_ALTERNATE_MODE)
-	if(VDM_MSG_IRQ_State.DATA)
-		receive_alternate_message(usbpd_data, &VDM_MSG_IRQ_State);
-	if(SSM_MSG_IRQ_State.BITS.Ssm_Flag_Unstructured_Data)
-		receive_unstructured_vdm_message(usbpd_data, &SSM_MSG_IRQ_State);
-	if(!AP_REQ_GET_State.BITS.Alt_Mode_By_I2C)
-		set_enable_alternate_mode(ALTERNATE_MODE_RESET);
-#endif
+	if (VDM_MSG_IRQ_State.DATA)
+		s2mm005_receive_alternate_message(usbpd_data, &VDM_MSG_IRQ_State);
+	if (SSM_MSG_IRQ_State.BITS.Ssm_Flag_Unstructured_Data)
+		s2mm005_receive_unstructured_vdm_message(usbpd_data, &SSM_MSG_IRQ_State);
+	if (!AP_REQ_GET_State.BITS.Alt_Mode_By_I2C)
+		s2mm005_set_enable_alternate_mode(ALTERNATE_MODE_RESET);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -27,6 +27,7 @@
 #include <linux/ccic/ccic_sysfs.h>
 #include <linux/ccic/ccic_core.h>
 #include <linux/ccic/ccic_notifier.h>
+#include <linux/ccic/s2mm005_alternate.h>
 #include <linux/fs.h>
 #include <linux/uaccess.h>
 #include <linux/regulator/consumer.h>
@@ -51,6 +52,8 @@ static enum ccic_sysfs_property s2mm005_sysfs_properties[] = {
 #endif /* CONFIG_CCIC_NOTIFIER */
 
 extern struct pdic_notifier_struct pd_noti;
+
+struct s2mm005_data *g_usbpd_data;
 
 #if defined(CONFIG_BATTERY_SAMSUNG)
 extern unsigned int lpcharge;
@@ -559,7 +562,8 @@ void s2mm005_set_upsm_mode(void)
 
 	struct s2mm005_data *usbpd_data;
 	u8 W_DATA[2];
-	usbpd_data = ccic_core_get_drvdata();
+
+	usbpd_data = g_usbpd_data;
 	if (!usbpd_data)
 		return;
 
@@ -1080,8 +1084,7 @@ void ccic_state_check_work(struct work_struct *wk)
 static int pdic_handle_usb_external_notifier_notification(struct notifier_block *nb,
 				unsigned long action, void *data)
 {
-
-	struct s2mm005_data *usbpd_data = ccic_core_get_drvdata();
+	struct s2mm005_data *usbpd_data = g_usbpd_data;
 	int ret = 0;
 	int enable = *(int *)data;
 
@@ -1089,19 +1092,19 @@ static int pdic_handle_usb_external_notifier_notification(struct notifier_block 
 	switch (action) {
 	case EXTERNAL_NOTIFY_HOSTBLOCK_PRE:
 		if (enable) {
-			set_enable_alternate_mode(ALTERNATE_MODE_STOP);
+			s2mm005_set_enable_alternate_mode(ALTERNATE_MODE_STOP);
 			if (usbpd_data->dp_is_connect)
-				dp_detach(usbpd_data);
+				s2mm005_dp_detach(usbpd_data);
 		} else {
 			if (usbpd_data->dp_is_connect)
-				dp_detach(usbpd_data);
+				s2mm005_dp_detach(usbpd_data);
 		}
 		break;
 	case EXTERNAL_NOTIFY_HOSTBLOCK_POST:
 		if (enable) {
 			;
 		} else {
-			set_enable_alternate_mode(ALTERNATE_MODE_START);
+			s2mm005_set_enable_alternate_mode(ALTERNATE_MODE_START);
 		}
 		break;
 	default:
@@ -1118,7 +1121,7 @@ static void delayed_external_notifier_init(struct work_struct *work)
 	int ret = 0;
 	static int retry_count = 1;
 	int max_retry_count = 5;
-	struct s2mm005_data *usbpd_data = ccic_core_get_drvdata();
+	struct s2mm005_data *usbpd_data = g_usbpd_data;
 
 	pr_info("%s : %d = times!\n", __func__, retry_count);
 
@@ -1212,6 +1215,7 @@ static int s2mm005_usbpd_probe(struct i2c_client *i2c,
 	pd_noti.pusbpd = usbpd_data;
 	mutex_init(&usbpd_data->i2c_mutex);
 
+	g_usbpd_data = usbpd_data;
 	/* Init */
 	usbpd_data->p_prev_rid = -1;
 	usbpd_data->prev_rid = -1;
@@ -1258,7 +1262,7 @@ static int s2mm005_usbpd_probe(struct i2c_client *i2c,
 	pccic_data->ccic_syfs_prop = pccic_sysfs_prop;
 	pccic_data->drv_data = usbpd_data;
 	pccic_data->name = "s2mm005";
-	pccic_data->set_enable_alternate_mode = set_enable_alternate_mode;
+	pccic_data->set_enable_alternate_mode = s2mm005_set_enable_alternate_mode;
 	ccic_core_register_chip(pccic_data);
 	dev_err(&i2c->dev, "registered ccic core \n");
 #endif
@@ -1438,23 +1442,10 @@ static int s2mm005_usbpd_probe(struct i2c_client *i2c,
 #endif
 	INIT_DELAYED_WORK(&usbpd_data->role_swap_work, role_swap_check);
 #endif
-#if defined(CONFIG_CCIC_ALTERNATE_MODE)
-	usbpd_data->alternate_state = 0;
-	usbpd_data->acc_type = 0;
-	usbpd_data->dp_is_connect = 0;
-	usbpd_data->dp_hs_connect = 0;
-	usbpd_data->dp_selected_pin = 0;
-	usbpd_data->pin_assignment = 0;
-	usbpd_data->is_samsung_accessory_enter_mode = 0;
-	usbpd_data->Vendor_ID = 0;
-	usbpd_data->Product_ID = 0;
-	usbpd_data->Device_Version = 0;
+
+	INIT_DELAYED_WORK(&usbpd_data->acc_detach_work, s2mm005_acc_detach_check);
 	ccic_register_switch_device(1);
-	INIT_DELAYED_WORK(&usbpd_data->acc_detach_work, acc_detach_check);
-	init_waitqueue_head(&usbpd_data->host_turn_on_wait_q);
-	set_host_turn_on_event(0);
-	usbpd_data->host_turn_on_wait_time = 2;
-#endif
+
 	fp_select_pdo = s2mm005_select_pdo;
 	usbpd_data->ccic_check_at_booting = 1;
 	INIT_DELAYED_WORK(&usbpd_data->ccic_init_work, ccic_state_check_work);
@@ -1485,7 +1476,7 @@ static int s2mm005_usbpd_probe(struct i2c_client *i2c,
 	INIT_DELAYED_WORK(&usbpd_data->usb_external_notifier_register_work,
 				  delayed_external_notifier_init);
 
-	// Register ccic handler to ccic notifier block list
+	/* Register ccic handler to ccic notifier block list */
 	ret = usb_external_notify_register(&usbpd_data->usb_external_notifier_nb,
 		pdic_handle_usb_external_notifier_notification, EXTERNAL_NOTIFY_DEV_PDIC);
 	if (ret < 0)
@@ -1494,6 +1485,10 @@ static int s2mm005_usbpd_probe(struct i2c_client *i2c,
 		pr_info("%s : external notifier register done!\n", __func__);
 
 	s2mm005_int_clear(usbpd_data);
+	init_waitqueue_head(&usbpd_data->host_turn_on_wait_q);
+	s2mm005_set_host_turn_on_event(0);
+	usbpd_data->host_turn_on_wait_time = 2;
+
 	return ret;
 
 err_init_irq:
@@ -1511,7 +1506,7 @@ err_free_irq_gpio:
 
 static int s2mm005_usbpd_remove(struct i2c_client *i2c)
 {
-	struct s2mm005_data *usbpd_data = ccic_core_get_drvdata();
+	struct s2mm005_data *usbpd_data = g_usbpd_data;
 
 	process_cc_detach(usbpd_data);
 
@@ -1540,10 +1535,8 @@ static int s2mm005_usbpd_remove(struct i2c_client *i2c)
 static void s2mm005_usbpd_shutdown(struct i2c_client *i2c)
 {
 	struct s2mm005_data *usbpd_data = i2c_get_clientdata(i2c);
-#if defined(CONFIG_CCIC_ALTERNATE_MODE)
 	struct device_node *np;
 	int gpio_dp_sw_oe;
-#endif
 
 	disable_irq(usbpd_data->irq);
 
@@ -1558,14 +1551,12 @@ static void s2mm005_usbpd_shutdown(struct i2c_client *i2c)
 			s2mm005_hard_reset(usbpd_data);
 		} else {
 			if (usbpd_data->pd_state) {
-#if defined(CONFIG_CCIC_ALTERNATE_MODE)
 				if (usbpd_data->dp_is_connect) {
 					pr_info("aux_sw_oe pin set to high\n");
 					np = of_find_node_by_name(NULL, "displayport");
 					gpio_dp_sw_oe = of_get_named_gpio(np, "dp,aux_sw_oe", 0);
 					gpio_direction_output(gpio_dp_sw_oe, 1);
 				}
-#endif
 				s2mm005_manual_LPM(usbpd_data, 0xB);
 				mdelay(110);
 			}

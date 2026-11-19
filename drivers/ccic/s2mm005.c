@@ -1497,6 +1497,20 @@ static int s2mm005_usbpd_probe(struct i2c_client *i2c,
 		s2mm005_write_byte(usbpd_data->i2c, 0x10, &W_CHG_INFO[0], 3); // send info to ccic
 	}
 #endif
+
+	init_completion(&usbpd_data->uvdm_out_wait);
+	init_completion(&usbpd_data->uvdm_longpacket_in_wait);
+#if defined(CONFIG_CCIC_NOTIFIER)
+	ret = ccic_misc_init(pccic_data);
+	if (ret) {
+		dev_err(&i2c->dev, "ccic misc register is failed, error %d\n", ret);
+		goto err_init_irq;
+	}
+	pccic_data->misc_dev->uvdm_read = samsung_uvdm_in_request_message;
+	pccic_data->misc_dev->uvdm_write = samsung_uvdm_out_request_message;
+	pccic_data->misc_dev->uvdm_ready = samsung_uvdm_ready;
+	pccic_data->misc_dev->uvdm_close = samsung_uvdm_close;
+#endif
 	INIT_DELAYED_WORK(&usbpd_data->usb_external_notifier_register_work,
 				  delayed_external_notifier_init);
 

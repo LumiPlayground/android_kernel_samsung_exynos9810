@@ -844,6 +844,10 @@ struct s2mm005_data {
 	int host_turn_on_event;
 	int host_turn_on_wait_time;
 	int is_samsung_accessory_enter_mode;
+	int is_in_first_sec_uvdm_req;
+	int is_in_sec_uvdm_out;
+	struct completion uvdm_out_wait;
+	struct completion uvdm_longpacket_in_wait;
 
 	int manual_lpm_mode;
 	int power_role;

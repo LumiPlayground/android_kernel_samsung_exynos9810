@@ -333,7 +333,6 @@ typedef struct {
 	U_VDO_DP_STATUS_UPDATES_Type		DATA_MSG_DP_STATUS;
 } DIS_ATTENTION_MESSAGE_DP_STATUS_Type;
 
-
 enum VDM_MSG_IRQ_State {
 	VDM_DISCOVER_ID		=	(1 << 0),
 	VDM_DISCOVER_SVIDS	=	(1 << 1),
@@ -344,6 +343,70 @@ enum VDM_MSG_IRQ_State {
 	VDM_DP_STATUS_UPDATE	=	(1 << 6),
 	VDM_DP_CONFIGURE	=	(1 << 7),
 };
+
+typedef union sec_uvdm_header {
+	uint32_t		data;
+	struct {
+		uint8_t		bdata[4];
+	} BYTES;
+	struct {
+		uint32_t	data:8,
+				total_number_of_uvdm_set:4,
+				direction:1,
+				command_type:2,
+				data_type:1,
+				pid:16;
+	} BITS;
+} U_SEC_UVDM_HEADER;
+
+typedef U_SEC_UVDM_HEADER U_SEC_UVDM_RESPONSE_HEADER;
+
+typedef union sec_tx_data_header {
+	uint32_t		data;
+	struct {
+		uint8_t		bdata[4];
+	} BYTES;
+	struct {
+		uint32_t	data_size_of_current_set:8,
+				total_data_size:8,
+				reserved:12,
+				order_of_current_uvdm_set:4;
+	} BITS;
+} U_SEC_TX_DATA_HEADER;
+
+typedef union sec_data_tx_tailer {
+	uint32_t		data;
+	struct {
+		uint8_t		bdata[4];
+	} BYTES;
+	struct {
+		uint32_t	checksum:16,
+				reserved:16;
+	} BITS;
+} U_SEC_TX_DATA_TAILER;
+
+typedef union sec_data_rx_header {
+	uint32_t		data;
+	struct {
+		uint8_t		bdata[4];
+	} BYTES;
+	struct {
+		uint32_t	reserved:18,
+				result_value:2,
+				received_data_size_of_current_set:8,
+				order_of_current_uvdm_set:4;
+	} BITS;
+} U_SEC_RX_DATA_HEADER;
+
+//Test
+#define S2MM005_SECUVDM_START_ADDR	(8)
+#define SAMSUNGUVDM_MAX_LONGPACKET_SIZE	(236)
+#define SAMSUNGUVDM_MAX_SHORTPACKET_SIZE (1)
+#define SASMSUNGUVDM_WAIT_MS (5000)
+#define SAMSUNGUVDM_ALIGN		(4)
+#define SAMSUNGUVDM_MAXDATA_FIRST_UVDMSET	(12)
+#define SAMSUNGUVDM_MAXDATA_NORMAL_UVDMSET	(16)
+#define SAMSUNGUVDM_CHECKSUM_DATA_COUNT		(20)
 
 #define ALTERNATE_MODE_NOT_READY	(1 << 0)
 #define ALTERNATE_MODE_READY		(1 << 1)
@@ -396,13 +459,18 @@ enum VDM_MSG_IRQ_State {
 #define HDMI_PRODUCT_ID			0xA025
 #define DEXPAD_PRODUCT_ID		0xA029
 #define MPA_PRODUCT_ID			0x2122
+
 /* Samsung UVDM structure */
 #define SEC_UVDM_SHORT_DATA		0x0
 #define SEC_UVDM_LONG_DATA		0x1
 #define SEC_UVDM_ININIATOR		0x0
+#define SEC_UVDM_RESPONDER_INIT	0x0
 #define SEC_UVDM_RESPONDER_ACK	0x1
 #define SEC_UVDM_RESPONDER_NAK	0x2
 #define SEC_UVDM_RESPONDER_BUSY	0x3
+#define SEC_UVDM_RX_HEADER_ACK	0x0
+#define SEC_UVDM_RX_HEADER_NAK	0x1
+#define SEC_UVDM_RX_HEADER_BUSY	0x2
 #define SEC_UVDM_UNSTRUCTURED_VDM	0x0
 
 /*For DP Pin Assignment */
@@ -426,6 +494,10 @@ void send_attention_message(void * data, int cmd);
 void do_alternate_mode_step_by_step(void * data, int cmd);
 void s2mm005_send_dex_fan_unstructured_vdm_message(void * data, int cmd);
 int s2mm005_send_samsung_unstructured_vdm_message(void * data, const char *buf, size_t size);
+int samsung_uvdm_in_request_message(void *data);
+int samsung_uvdm_out_request_message(void *data, int size);
+int samsung_uvdm_ready(void);
+void samsung_uvdm_close(void);
 void s2mm005_set_enable_alternate_mode(int mode);
 void s2mm005_set_clear_discover_mode(void);
 void s2mm005_set_host_turn_on_event(int mode);

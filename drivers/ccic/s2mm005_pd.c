@@ -26,6 +26,9 @@
 #if defined(CONFIG_USB_HOST_NOTIFY)
 #include <linux/usb_notify.h>
 #endif
+#if defined(CONFIG_CCIC_NOTIFIER)
+#include <linux/ccic/ccic_core.h>
+#endif
 
 extern struct pdic_notifier_struct pd_noti;
 
@@ -189,6 +192,76 @@ static int s2mm005_src_capacity_information(const struct i2c_client *i2c, uint32
 	return available_pdo_num;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// Processing message role
+////////////////////////////////////////////////////////////////////////////////
+void process_message_role(void *data)
+{
+	struct s2mm005_data *usbpd_data = data;
+	struct otg_notify *o_notify = get_otg_notify();
+	int is_dfp = 0;
+	int is_src = 0;
+
+	// 1. read pd state
+	is_dfp = usbpd_data->func_state & (0x1 << 26) ? 1 : 0;
+	is_src = usbpd_data->func_state & (0x1 << 25) ? 1 : 0;
+	pr_info("%s func_state :0x%X, is_dfp : %d, is_src : %d\n", __func__,
+		usbpd_data->func_state, is_dfp, is_src);
+	pr_info("%s current port data_role : %d, power_role : %d\n", __func__,
+		usbpd_data->typec_data_role, usbpd_data->typec_power_role);
+
+	if (is_src == usbpd_data->typec_power_role) {
+		pr_info("%s skip. already power role is set.\n", __func__);
+		return;
+	}
+
+	// 2. process power role
+	if (usbpd_data->func_state != State_PE_PRS_SNK_SRC_Source_on) {
+#if defined(CONFIG_DUAL_ROLE_USB_INTF)
+		if (is_src && (usbpd_data->power_role == DUAL_ROLE_PROP_PR_SNK)) {
+			ccic_event_work(usbpd_data, CCIC_NOTIFY_DEV_BATTERY,
+					CCIC_NOTIFY_ID_ATTACH, 0, 0, 0);
+		}
+#elif defined (CONFIG_TYPEC)
+		if (is_src && (usbpd_data->typec_power_role == TYPEC_SINK)) {
+			pd_noti.event = PDIC_NOTIFY_EVENT_PD_PRSWAP_SNKTOSRC;
+			pd_noti.sink_status.selected_pdo_num = 0;
+			pd_noti.sink_status.available_pdo_num = 0;
+			pd_noti.sink_status.current_pdo_num = 0;
+			ccic_event_work(usbpd_data, CCIC_NOTIFY_DEV_BATTERY,
+					CCIC_NOTIFY_ID_POWER_STATUS, 0, 0, 0);
+		}
+#endif
+	}
+
+
+#if defined(CONFIG_USB_HOST_NOTIFY)
+	if (is_src)
+		send_otg_notify(o_notify, NOTIFY_EVENT_POWER_SOURCE, 1);
+	else
+		send_otg_notify(o_notify, NOTIFY_EVENT_POWER_SOURCE, 0);
+#endif
+	vbus_turn_on_ctrl(is_src);
+
+#if defined(CONFIG_DUAL_ROLE_USB_INTF)
+	usbpd_data->power_role = is_src ?
+		DUAL_ROLE_PROP_PR_SRC : DUAL_ROLE_PROP_PR_SNK;
+	ccic_event_work(usbpd_data, CCIC_NOTIFY_DEV_PDIC,
+				CCIC_NOTIFY_ID_ROLE_SWAP, 0, 0, 0);
+#elif defined (CONFIG_TYPEC)
+	usbpd_data->typec_power_role = is_src ? TYPEC_SOURCE : TYPEC_SINK;
+	typec_set_pwr_role(usbpd_data->port, usbpd_data->typec_power_role);
+#endif
+
+	if (usbpd_data->typec_try_state_change == TRY_ROLE_SWAP_PR) {
+		pr_info("%s : power role is changed %s\n",
+				__func__, is_src ? "SOURCE" : "SINK");
+		usbpd_data->typec_try_state_change = TRY_ROLE_SWAP_NONE;
+		complete(&usbpd_data->typec_reverse_completion);
+		pr_info("%s typec_reverse_completion!\n", __func__);
+	}
+}
+
 void process_pd(void *data, u8 plug_attach_done, u8 *pdic_attach, MSG_IRQ_STATUS_Type *MSG_IRQ_State)
 {
 	struct s2mm005_data *usbpd_data = data;
@@ -196,9 +269,6 @@ void process_pd(void *data, u8 plug_attach_done, u8 *pdic_attach, MSG_IRQ_STATUS
 	uint16_t REG_ADD;
 	uint8_t rp_currentlvl, is_src;
 	REQUEST_FIXED_SUPPLY_STRUCT_Typedef *request_power_number;
-#if defined(CONFIG_USB_HOST_NOTIFY) && defined(CONFIG_DUAL_ROLE_USB_INTF)
-	struct otg_notify *o_notify = get_otg_notify();
-#endif
 
 	printk("%s\n",__func__);
 	rp_currentlvl = ((usbpd_data->func_state >> 27) & 0x3);
@@ -208,24 +278,12 @@ void process_pd(void *data, u8 plug_attach_done, u8 *pdic_attach, MSG_IRQ_STATUS
 	if (MSG_IRQ_State->BITS.Ctrl_Flag_PR_Swap)
 	{
 		usbpd_data->is_pr_swap++;
-		dev_info(&i2c->dev, "PR_Swap requested to %s\n", is_src ? "SOURCE" : "SINK");
-#if defined(CONFIG_DUAL_ROLE_USB_INTF)
-		if (is_src && (usbpd_data->power_role == DUAL_ROLE_PROP_PR_SNK)) {
-			ccic_event_work(usbpd_data, CCIC_NOTIFY_DEV_BATTERY, CCIC_NOTIFY_ID_ATTACH, 0, 0, 0);
-		}
-#endif
-		vbus_turn_on_ctrl(is_src);
-#if defined(CONFIG_DUAL_ROLE_USB_INTF)
-		usbpd_data->power_role = is_src ? DUAL_ROLE_PROP_PR_SRC : DUAL_ROLE_PROP_PR_SNK;
-#if defined(CONFIG_USB_HOST_NOTIFY)
-		if( usbpd_data->power_role == DUAL_ROLE_PROP_PR_SRC)
-			send_otg_notify(o_notify, NOTIFY_EVENT_POWER_SOURCE, 1);
-		else if( usbpd_data->power_role == DUAL_ROLE_PROP_PR_SNK)
-			send_otg_notify(o_notify, NOTIFY_EVENT_POWER_SOURCE, 0);
-#endif
-		ccic_event_work(usbpd_data, CCIC_NOTIFY_DEV_PDIC, CCIC_NOTIFY_ID_ROLE_SWAP, 0, 0, 0);
-#endif
-	}
+		dev_info(&i2c->dev, "PR_Swap requested to %s, receive\n", is_src ? "SOURCE" : "SINK");
+		process_message_role(usbpd_data);
+	} else if (usbpd_data->typec_try_state_change == TRY_ROLE_SWAP_PR) {
+		dev_info(&i2c->dev, "PR_Swap requested to %s, send\n", is_src ? "SOURCE" : "SINK");
+		process_message_role(usbpd_data);
+	} else ;
 
 	if (MSG_IRQ_State->BITS.Data_Flag_SRC_Capability)
 	{

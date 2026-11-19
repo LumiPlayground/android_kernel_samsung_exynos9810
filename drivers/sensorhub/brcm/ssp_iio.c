@@ -23,8 +23,6 @@
 #include <linux/iio/kfifo_buf.h>
 #if defined(CONFIG_BATTERY_SAMSUNG_V2)
 #include "../../battery_v2/include/sec_charging_common.h"
-#else
-#include <linux/battery/sec_charging_common.h>
 #endif
 
 static struct sensor_info info_table[] = {

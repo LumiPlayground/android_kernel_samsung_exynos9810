@@ -478,16 +478,6 @@ static int __max98506_spk_enable(struct max98506_priv *max98506)
 	unsigned int vimon = vstep->adc_status ? MAX98506_ADC_VIMON_EN_MASK : 0;
 	unsigned int boostv = pdata->boostv;
 	unsigned int rev_id = pdata->rev_id;
-#ifdef CONFIG_SND_SOC_MAXIM_DSM
-	unsigned int smode_table[MAX98506_OSM_MAX] = {
-		2, /* MAX98506_OSM_MONO_L */
-		1, /* MAX98506_OSM_MONO_R */
-		2, /* MAX98506_OSM_RCV_L */
-		1, /* MAX98506_OSM_RCV_R */
-		0, /* MAX98506_OSM_STEREO */
-		3, /* MAX98506_OSM_STEREO_MODE2 */
-	};
-#endif /* CONFIG_SND_SOC_MAXIM_DSM */
 
 	gain_l = gain_r = pdata->spk_gain;
 	enable_l = enable_r = 0;
@@ -523,10 +513,6 @@ static int __max98506_spk_enable(struct max98506_priv *max98506)
 		msg_maxim("Invalid one_stop_mode");
 		return -EINVAL;
 	}
-
-#ifdef CONFIG_SND_SOC_MAXIM_DSM
-	maxdsm_set_stereo_mode_configuration(smode_table[pdata->osm]);
-#endif /* CONFIG_SND_SOC_MAXIM_DSM */
 
 	/*
 	 * If revision IDs are not VERSION2,

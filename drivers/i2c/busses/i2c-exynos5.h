@@ -57,10 +57,11 @@ struct exynos5_i2c {
 	int			scl_clk_stretch;
 	int			stop_after_trans;
 	unsigned int		transfer_delay;
-
+	unsigned int		t_data_su_timing;
 	int			idle_ip_index;
 	int			reset_before_trans;
 	unsigned int		runtime_resumed;
 	int			nack_restart;
+	int			usi_v2;
 };
 #endif /*__I2C_EXYNOS5_H */

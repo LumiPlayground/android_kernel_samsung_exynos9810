@@ -606,7 +606,7 @@ static void max98506_spk_enable(struct max98506_priv *max98506,
 	}
 
 #ifdef CONFIG_SND_SOC_MAXIM_DSM
-	maxdsm_set_spk_state(enable, max98506->pdata->osm);
+	maxdsm_set_spk_state(enable, -1);
 #endif /* CONFIG_SND_SOC_MAXIM_DSM */
 }
 

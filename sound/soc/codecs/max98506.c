@@ -175,7 +175,7 @@ static int max98506_set_dump_status(struct snd_kcontrol *kcontrol,
 static ssize_t max98506_log_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	return maxdsm_log_prepare(buf);
+	return maxdsm_log_prepare(buf, LOG_LEFT);
 }
 static DEVICE_ATTR(dsm_log, S_IRUGO, max98506_log_show, NULL);
 
@@ -184,9 +184,10 @@ static ssize_t max98506_log_spk_excu_max_show(struct device *dev,
 {
 	struct maxim_dsm_log_max_values values;
 
-	maxdsm_log_max_prepare(&values);
-	maxdsm_log_max_refresh(SPK_EXCURSION_MAX);
-	return sprintf(buf, "%d", values.excursion_max);
+	maxdsm_log_max_prepare(&values, LOG_LEFT);
+	maxdsm_log_max_refresh(SPK_EXCURSION_MAX, LOG_LEFT);
+
+	return snprintf(buf, PAGE_SIZE, "%d", values.excursion_max);
 }
 static DEVICE_ATTR(spk_excu_max, S_IRUGO,
 		   max98506_log_spk_excu_max_show, NULL);
@@ -196,8 +197,9 @@ static ssize_t max98506_log_spk_excu_maxtime_show(struct device *dev,
 {
 	struct maxim_dsm_log_max_values values;
 
-	maxdsm_log_max_prepare(&values);
-	return sprintf(buf, "%s", values.dsm_timestamp);
+	maxdsm_log_max_prepare(&values, LOG_LEFT);
+
+	return snprintf(buf, PAGE_SIZE, "%s", values.dsm_timestamp);
 }
 static DEVICE_ATTR(spk_excu_maxtime, S_IRUGO,
 		   max98506_log_spk_excu_maxtime_show, NULL);
@@ -207,9 +209,10 @@ static ssize_t max98506_log_spk_excu_overcnt_show(struct device *dev,
 {
 	struct maxim_dsm_log_max_values values;
 
-	maxdsm_log_max_prepare(&values);
-	maxdsm_log_max_refresh(SPK_EXCURSION_OVERCNT);
-	return sprintf(buf, "%d", values.excursion_overcnt);
+	maxdsm_log_max_prepare(&values, LOG_LEFT);
+	maxdsm_log_max_refresh(SPK_EXCURSION_OVERCNT, LOG_LEFT);
+
+	return snprintf(buf, PAGE_SIZE, "%d", values.excursion_overcnt);
 }
 static DEVICE_ATTR(spk_excu_overcnt, S_IRUGO,
 		   max98506_log_spk_excu_overcnt_show, NULL);
@@ -219,9 +222,10 @@ static ssize_t max98506_log_spk_temp_max_show(struct device *dev,
 {
 	struct maxim_dsm_log_max_values values;
 
-	maxdsm_log_max_prepare(&values);
-	maxdsm_log_max_refresh(SPK_TEMP_MAX);
-	return sprintf(buf, "%d", values.coil_temp_max);
+	maxdsm_log_max_prepare(&values, LOG_LEFT);
+	maxdsm_log_max_refresh(SPK_TEMP_MAX, LOG_LEFT);
+
+	return snprintf(buf, PAGE_SIZE, "%d", values.coil_temp_max);
 }
 static DEVICE_ATTR(spk_temp_max, S_IRUGO,
 		   max98506_log_spk_temp_max_show, NULL);
@@ -231,8 +235,9 @@ static ssize_t max98506_log_spk_temp_maxtime_show(struct device *dev,
 {
 	struct maxim_dsm_log_max_values values;
 
-	maxdsm_log_max_prepare(&values);
-	return sprintf(buf, "%s", values.dsm_timestamp);
+	maxdsm_log_max_prepare(&values, LOG_LEFT);
+
+	return snprintf(buf, PAGE_SIZE, "%s", values.dsm_timestamp);
 }
 static DEVICE_ATTR(spk_temp_maxtime, S_IRUGO,
 		   max98506_log_spk_temp_maxtime_show, NULL);
@@ -242,10 +247,10 @@ static ssize_t max98506_log_spk_temp_overcnt_show(struct device *dev,
 {
 	struct maxim_dsm_log_max_values values;
 
-	maxdsm_log_max_prepare(&values);
-	maxdsm_log_max_refresh(SPK_TEMP_OVERCNT);
+	maxdsm_log_max_prepare(&values, LOG_LEFT);
+	maxdsm_log_max_refresh(SPK_TEMP_OVERCNT, LOG_LEFT);
 
-	return sprintf(buf, "%d", values.coil_temp_overcnt);
+	return snprintf(buf, PAGE_SIZE, "%d", values.coil_temp_overcnt);
 }
 static DEVICE_ATTR(spk_temp_overcnt, S_IRUGO,
 		   max98506_log_spk_temp_overcnt_show, NULL);
@@ -615,7 +620,7 @@ static void max98506_spk_enable(struct max98506_priv *max98506,
 	}
 
 #ifdef CONFIG_SND_SOC_MAXIM_DSM
-	maxdsm_set_spk_state(enable);
+	maxdsm_set_spk_state(enable, max98506->pdata->osm);
 #endif /* CONFIG_SND_SOC_MAXIM_DSM */
 }
 

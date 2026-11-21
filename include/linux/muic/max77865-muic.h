@@ -307,6 +307,7 @@ typedef enum {
 	PRCHGTYP_RFU			= 0x7,
 } prchgtyp_t;
 
+extern struct muic_platform_data muic_pdata;
 extern struct device *switch_device;
 
 #endif /* __MAX77865_MUIC_H__ */

@@ -47,11 +47,8 @@
 #define I2C_ADDR_FG     (0x6C >> 1)
 
 static struct mfd_cell max77865_devs[] = {
-#if defined(CONFIG_MUIC_UNIVERSAL)
-	{ .name = "muic-universal", },
-#endif /* CONFIG_MUIC_UNIVERSAL */
 #if defined(CONFIG_MUIC_MAX77865)
-	{ .name = MUIC_DEV_NAME, },
+	{ .name = "muic-max77865", },
 #endif /* CONFIG_MUIC_MAX77865 */
 #if defined(CONFIG_REGULATOR_MAX77865)
 	{ .name = "max77865-safeout", },

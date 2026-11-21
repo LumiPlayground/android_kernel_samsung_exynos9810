@@ -27,6 +27,20 @@
 
 #define MUIC_DEV_NAME			"muic-max77865"
 
+#if defined(CONFIG_MUIC_MAX77865_CCIC)
+#define MUIC_CCIC_NOTI_ATTACH		(1)
+#define MUIC_CCIC_NOTI_DETACH		(-1)
+#define MUIC_CCIC_NOTI_UNDEFINED	(0)
+
+struct max77865_muic_ccic_evt {
+	int ccic_evt_attached; /* 1: attached, -1: detached, 0: undefined */
+	int ccic_evt_rid; /* the last rid */
+	int ccic_evt_rprd; /* rprd */
+	int ccic_evt_roleswap; /* check rprd role swap event */
+	int ccic_evt_dcdcnt; /* count dcd timeout */
+};
+#endif /* CONFIG_MUIC_MAX77865_CCIC */
+
 /* muic chip specific internal data structure */
 struct max77865_muic_data {
 	struct device			*dev;
@@ -91,6 +105,16 @@ struct max77865_muic_data {
 	/* legacy TA or USB for CCIC */
 	muic_attached_dev_t		legacy_dev;
 
+#if defined(CONFIG_MUIC_MAX77865_CCIC)
+	struct max77865_muic_ccic_evt	ccic_info_data;
+	bool				afc_water_disable;
+	int				ccic_evt_id;
+#ifdef CONFIG_USB_TYPEC_MANAGER_NOTIFIER
+	struct notifier_block		manager_nb;
+#else
+	struct notifier_block		ccic_nb;
+#endif
+#endif /* CONFIG_MUIC_MAX77865_CCIC */
 };
 
 /* max77865 muic register read/write related information defines. */

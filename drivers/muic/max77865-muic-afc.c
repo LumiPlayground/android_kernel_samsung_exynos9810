@@ -105,6 +105,11 @@ bool max77865_muic_check_is_enable_afc(struct max77865_muic_data *muic_data,
 		} else if (!muic_data->is_charger_ready) {
 			pr_info("%s:%s Charger is not ready(%d), skip AFC\n",
 				MUIC_DEV_NAME, __func__, muic_data->is_charger_ready);
+#if defined(CONFIG_MUIC_MAX77865_CCIC)
+		} else if (muic_data->afc_water_disable) {
+			pr_info("%s:%s water detected(%d), skip AFC\n",
+				MUIC_DEV_NAME, __func__, muic_data->afc_water_disable);
+#endif /* CONFIG_MUIC_MAX77865_CCIC */
 		} else {
 			ret = true;
 		}

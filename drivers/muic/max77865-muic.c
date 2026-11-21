@@ -67,6 +67,11 @@ extern void max77865_hv_muic_init_detect(struct max77865_muic_data *muic_data);
 extern void max77865_hv_muic_remove(struct max77865_muic_data *muic_data);
 #endif /* CONFIG_HV_MUIC_MAX77865_AFC */
 
+#if defined(CONFIG_MUIC_MAX77865_CCIC)
+extern int max77865_muic_register_ccic_notifier(struct max77865_muic_data *muic_data);
+extern void max77865_muic_unregister_ccic_notifier(struct max77865_muic_data *muic_data);
+#endif /* CONFIG_MUIC_MAX77865_CCIC */
+
 /* INT_BC / INT_FC / INT_GP bitmasks */
 #define INT_BC_CHGTYP_MASK	(1 << 0)
 #define INT_BC_DCDTMR_MASK	(1 << 1)
@@ -827,6 +832,10 @@ static int max77865_muic_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, muic_data);
 
+#if defined(CONFIG_MUIC_MAX77865_CCIC)
+	muic_data->afc_water_disable = false;
+#endif /* CONFIG_MUIC_MAX77865_CCIC */
+
 #if defined(CONFIG_HV_MUIC_MAX77865_AFC)
 	if (get_afc_mode() == CH_MODE_AFC_DISABLE_VAL) {
 		pr_info("%s:%s afc_disable: AFC disabled\n", MUIC_DEV_NAME, __func__);
@@ -899,12 +908,20 @@ static int max77865_muic_probe(struct platform_device *pdev)
 	max77865_muic_detect_dev(muic_data);
 	mutex_unlock(&muic_data->muic_mutex);
 
+#if defined(CONFIG_MUIC_MAX77865_CCIC)
+	max77865_muic_register_ccic_notifier(muic_data);
+#endif
+
 	return 0;
 }
 
 static int max77865_muic_remove(struct platform_device *pdev)
 {
 	struct max77865_muic_data *muic_data = platform_get_drvdata(pdev);
+
+#if defined(CONFIG_MUIC_MAX77865_CCIC)
+	max77865_muic_unregister_ccic_notifier(muic_data);
+#endif
 
 	if (switch_device)
 		sysfs_remove_group(&switch_device->kobj, &max77865_muic_group);

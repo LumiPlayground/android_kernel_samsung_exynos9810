@@ -8,6 +8,7 @@ obj-$(CONFIG_MUIC_MAX77854)		+= max77854-muic.o
 obj-$(CONFIG_HV_MUIC_MAX77854_AFC)	+= max77854-muic-afc.o
 obj-$(CONFIG_MUIC_MAX77865)		+= max77865-muic.o
 obj-$(CONFIG_HV_MUIC_MAX77865_AFC)	+= max77865-muic-afc.o
+obj-$(CONFIG_MUIC_MAX77865_CCIC)	+= max77865-muic-ccic.o
 obj-$(CONFIG_MUIC_MAX77705)		+= max77705-muic.o
 obj-$(CONFIG_HV_MUIC_MAX77705_AFC)	+= max77705-muic-afc.o
 obj-$(CONFIG_MUIC_MAX77705_CCIC)	+= max77705-muic-ccic.o
